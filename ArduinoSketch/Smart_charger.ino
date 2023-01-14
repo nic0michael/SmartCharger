@@ -1,46 +1,33 @@
 #define ANALOG_IN_PIN A0
 
-
+int RELAY = 3;
+float REFERENCE_VOLTAGE = 2.1;
+float DISCHARGED_MAX_VOLTAGE = 14.0;  
 
 // Floats for ADC voltage & Input voltage
 float adc_voltage = 0.0;
-float in_voltage = 0.0;
-
-float previousVoltage = 0.0;
+float inputVoltage = 0.0;
 
 boolean charging = false;
-boolean shouldCharge = false;
-boolean shouldDischarge = false;
-boolean relayIsOn = false;
 
 // Floats for resistor values in divider (in ohms)
 float R1 = 27000.0;
-float R2 = 2300.0;
+float R2 = 2610.0;
 
-// Float for Reference Voltage
-float ref_voltage = 2.1;
 
-float dischargedVoltage = 12.9;
-float runningVoltage = 13.8;
-float fullyChargedVoltage = 14.9;
 int chargeDelay = 1;  // start with 15 seconds
 int dischargeCount = 0;
-// Integer for ADC value
 int adc_value = 0;
-int relay = 3;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(relay, OUTPUT);
-  digitalWrite(relay, LOW);
+  pinMode(RELAY, OUTPUT);
+  digitalWrite(RELAY, LOW);
   Serial.begin(115200);
   Serial.println("==============================");
   Serial.println("ZS6BVR Smart Charger ");
   chargeDelay = 1;
 }
-
-
-
 
 void loop() {
 
@@ -51,54 +38,40 @@ void loop() {
   adc_value = analogRead(ANALOG_IN_PIN);
 
   // Determine voltage at ADC input
-  adc_voltage = (adc_value * ref_voltage) / 1024.0;
+  adc_voltage = (adc_value * REFERENCE_VOLTAGE) / 1024.0;
 
   // Calculate voltage at divider input
-  in_voltage = adc_voltage / (R2 / (R1 + R2));
+  inputVoltage = adc_voltage / (R2 / (R1 + R2));
 
 
   // Print results to Serial Monitor to 2 decimal places
-  Serial.print("Input Voltage = ");
-  Serial.println(in_voltage, 2);
-
-  Serial.print("chargeDelay:");
-  Serial.println(chargeDelay);
-
-  Serial.print("dischargeCount");
-  Serial.println(dischargeCount);
 
   if (dischargeCount > 187) {  //evry 55 minutes (225 =1hr)
     dischargeCount = 0;
     chargeDelay = 2;  // charge for 20 minutes
     charge(chargeDelay);
-  } else if (in_voltage <= dischargedVoltage) {
+
+  } else if (inputVoltage <= DISCHARGED_MAX_VOLTAGE) {
     charging = true;
     charge(chargeDelay);
     chargeDelay++;
+
     if (chargeDelay > 4) {
       chargeDelay = 1;
     }
 
-  } else if (in_voltage >= fullyChargedVoltage) {
-    charging = false;
-    dischargeCount++;
-    disharge();
-
-  } else if (in_voltage > runningVoltage) {
-    charging = false;
-    dischargeCount++;
-    disharge();
   } else {
     Serial.println("In between values");
     dischargeCount++;
     disharge();
+
   }
 
   Serial.println();
 }
 
 void disharge() {
-  digitalWrite(relay, LOW);
+  digitalWrite(RELAY, LOW);
   Serial.println("Switched Off Relay");
 
   for (int i = 0; i < 8; i++) {
@@ -106,11 +79,12 @@ void disharge() {
     delay(1500);                      // wait for a second
     digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
     delay(500);
+    printDischargeStatus();
   }
 }
 
 void charge(int chargeDelay) {
-  digitalWrite(relay, HIGH);
+  digitalWrite(RELAY, HIGH);
   Serial.println("Switched On Relay");
 
   int iterrations = makeIterrations(chargeDelay);
@@ -132,6 +106,7 @@ void charge(int chargeDelay) {
     delay(125);
     digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
     delay(125);
+    printChargeStatus();
   }
 }
 
@@ -161,3 +136,27 @@ int makeIterrations(int chargeDelay) {
 
   return iterrations;
 }
+
+void printChargeStatus(){
+  Serial.println("Charging");
+  printStatus();
+}
+
+void printDischargeStatus(){
+  Serial.println("Discharging");
+  printStatus();
+}
+
+void printStatus(){
+  Serial.print("Input Voltage = ");
+  Serial.println(inputVoltage, 2);
+
+  Serial.print("chargeDelay:");
+  Serial.println(chargeDelay);
+
+  Serial.print("dischargeCount");
+  Serial.println(dischargeCount);
+  Serial.println("=--------------------------------");
+  Serial.println(" ");
+}
+
