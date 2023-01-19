@@ -2,7 +2,7 @@
 
 int RELAY = 3;
 float REFERENCE_VOLTAGE = 2.1;
-float DISCHARGED_MAX_VOLTAGE = 14.0;  
+float DISCHARGED_MAX_VOLTAGE = 13.9;  
 
 // Floats for ADC voltage & Input voltage
 float adc_voltage = 0.0;
@@ -12,7 +12,7 @@ boolean charging = false;
 
 // Floats for resistor values in divider (in ohms)
 float R1 = 27000.0;
-float R2 = 2610.0;
+float R2 = 2510.0;
 
 
 int chargeDelay = 1;  // start with 15 seconds
@@ -46,12 +46,9 @@ void loop() {
 
   // Print results to Serial Monitor to 2 decimal places
 
-  if (dischargeCount > 187) {  //evry 55 minutes (225 =1hr)
-    dischargeCount = 0;
-    chargeDelay = 2;  // charge for 20 minutes
-    charge(chargeDelay);
-
-  } else if (inputVoltage <= DISCHARGED_MAX_VOLTAGE) {
+  if (inputVoltage <= DISCHARGED_MAX_VOLTAGE) {
+    Serial.println("Battery voltage is low");
+    Serial.println("======================");
     charging = true;
     charge(chargeDelay);
     chargeDelay++;
@@ -61,7 +58,9 @@ void loop() {
     }
 
   } else {
-    Serial.println("In between values");
+    Serial.println("Battery voltage is high");
+    Serial.println("=======================");
+    Serial.println("We are discharging the battery");
     dischargeCount++;
     disharge();
 
@@ -110,12 +109,41 @@ void charge(int chargeDelay) {
   }
 }
 
+void chargeWithHighVoltage(int chargeDelay) {
+
+  digitalWrite(RELAY, HIGH);
+  Serial.println("High Voltage Charge : Switched On Relay");
+
+  int iterrations = makeIterrations(chargeDelay);
+
+  for (int i = 0; i < iterrations; i++) {  // 1 second per iteration
+    digitalWrite(LED_BUILTIN, HIGH);       // turn the LED on (HIGH is the voltage level)
+    delay(125);
+    digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
+    delay(125);
+    digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+    delay(125);
+    digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
+    delay(125);
+    digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+    delay(125);
+    digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
+    delay(125);
+    digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+    delay(125);
+    digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
+    delay(125);
+    printChargeStatus();
+  }
+
+}
+
 int makeIterrations(int chargeDelay) {
   int iterrations = 1;
 
   switch (chargeDelay) {
     case 1:
-      iterrations = 15;
+      iterrations = 10;
       break;
 
     case 2:
@@ -138,11 +166,13 @@ int makeIterrations(int chargeDelay) {
 }
 
 void printChargeStatus(){
+  digitalWrite(RELAY, HIGH);
   Serial.println("Charging");
   printStatus();
 }
 
 void printDischargeStatus(){
+  digitalWrite(RELAY, LOW);
   Serial.println("Discharging");
   printStatus();
 }
@@ -159,4 +189,3 @@ void printStatus(){
   Serial.println("=--------------------------------");
   Serial.println(" ");
 }
-
